@@ -1,0 +1,38 @@
+{
+  "name": "ticktick-mcp-ts",
+  "version": "1.0.0",
+  "description": "Simplified TypeScript MCP server for TickTick",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts",
+    "test": "tsx test-server.ts",
+    "clean": "rm -rf dist",
+    "get-token": "tsx get-token.ts"
+  },
+  "keywords": [
+    "mcp",
+    "ticktick",
+    "typescript",
+    "task-management"
+  ],
+  "author": "Ilya",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.15.0",
+    "dotenv": "^16.6.1",
+    "express": "^5.1.0",
+    "zod": "^3.24.1"
+  },
+  "devDependencies": {
+    "@types/express": "^5.0.3",
+    "@types/node": "^22.16.2",
+    "tsx": "^4.16.5",
+    "typescript": "^5.5.4"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "mcpServers": {
+    "ticktick": {
+      "command": "node",
+      "args": ["dist/index.js"],
+      "cwd": "/path/to/ticktick-mcp-ts",
+      "env": {
+        "TICKTICK_ACCESS_TOKEN": "your_access_token_here",
+        "TICKTICK_BASE_URL": "https://api.ticktick.com/open/v1"
+      }
+    }
+  }
+}
