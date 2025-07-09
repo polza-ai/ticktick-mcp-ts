@@ -6,6 +6,7 @@ import {
 	CreateTaskRequest,
 	UpdateTaskRequest,
 	CreateProjectRequest,
+	UpdateProjectRequest,
 	TickTickApiError,
 } from "../types/ticktick.js";
 
@@ -132,7 +133,7 @@ export class TickTickClient {
 	 */
 	async updateProject(
 		projectId: string,
-		project: Partial<CreateProjectRequest>,
+		project: UpdateProjectRequest,
 		accessToken: string
 	): Promise<Project> {
 		return this.makeAuthenticatedRequest<Project>(

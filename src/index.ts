@@ -3,9 +3,15 @@
 import { TickTickMcpServer } from "./server/ticktick-mcp-server.js";
 import { TickTickClientConfig } from "./types/ticktick.js";
 import dotenv from "dotenv";
+import path from "path";
+import { fileURLToPath } from "url";
 
-// Загружаем переменные окружения
-dotenv.config();
+// Получаем путь к текущему файлу и директории
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Загружаем переменные окружения из корневой папки проекта
+dotenv.config({ path: path.join(__dirname, "..", ".env") });
 
 async function main() {
 	// Проверяем наличие access token

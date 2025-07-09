@@ -138,9 +138,16 @@ export interface CreateTaskParams {
 	title: string;
 	projectId: string;
 	content?: string;
+	desc?: string;
+	isAllDay?: boolean;
 	startDate?: string;
 	dueDate?: string;
+	timeZone?: string;
+	reminders?: string[];
+	repeatFlag?: string;
 	priority?: "none" | "low" | "medium" | "high";
+	sortOrder?: number;
+	items?: Omit<ChecklistItem, "id">[];
 }
 
 export interface UpdateTaskParams {
@@ -148,9 +155,16 @@ export interface UpdateTaskParams {
 	projectId: string;
 	title?: string;
 	content?: string;
+	desc?: string;
+	isAllDay?: boolean;
 	startDate?: string;
 	dueDate?: string;
+	timeZone?: string;
+	reminders?: string[];
+	repeatFlag?: string;
 	priority?: "none" | "low" | "medium" | "high";
+	sortOrder?: number;
+	items?: ChecklistItem[];
 }
 
 export interface CompleteTaskParams {
@@ -167,6 +181,15 @@ export interface CreateProjectParams {
 	name: string;
 	color?: string;
 	viewMode?: "list" | "kanban" | "timeline";
+	sortOrder?: number;
+}
+
+export interface UpdateProjectParams {
+	projectId: string;
+	name?: string;
+	color?: string;
+	viewMode?: "list" | "kanban" | "timeline";
+	sortOrder?: number;
 }
 
 export interface DeleteProjectParams {
@@ -213,6 +236,76 @@ export class TickTickApiError extends Error {
 		this.status = status;
 		this.code = code;
 	}
+}
+
+// ============================================================================
+// MCP RESPONSE TYPES
+// ============================================================================
+
+export interface McpResponse<T = any> {
+	success: boolean;
+	data?: T;
+	message: string;
+	error?: string;
+	timestamp: string;
+}
+
+export interface ProjectsResponseData {
+	count: number;
+	projects: Project[];
+}
+
+export interface ProjectTasksResponseData {
+	project: Project;
+	taskCount: number;
+	tasks: Task[];
+}
+
+export interface TaskResponseData {
+	task: Task;
+}
+
+export interface CreateTaskResponseData {
+	task: Task;
+}
+
+export interface CreateProjectResponseData {
+	project: Project;
+}
+
+export interface OperationResponseData {
+	success: boolean;
+	operationType: string;
+	targetId: string;
+	details?: string;
+}
+
+export interface TodayTasksResponseData {
+	date: string;
+	taskCount: number;
+	tasks: Task[];
+}
+
+export interface OverdueTasksResponseData {
+	currentDate: string;
+	overdueCount: number;
+	tasks: Task[];
+}
+
+export interface StatsResponseData {
+	totalProjects: number;
+	totalTasks: number;
+	completedTasks: number;
+	pendingTasks: number;
+	overdueTasksCount: number;
+	todayTasksCount: number;
+	projectStats: {
+		projectId: string;
+		projectName: string;
+		totalTasks: number;
+		completedTasks: number;
+		pendingTasks: number;
+	}[];
 }
 
 // ============================================================================
