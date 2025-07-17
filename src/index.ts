@@ -35,6 +35,7 @@ async function main() {
 		baseUrl:
 			process.env.TICKTICK_BASE_URL || "https://api.ticktick.com/open/v1",
 		timeout: 10000,
+		accessToken: accessToken,
 	};
 
 	try {

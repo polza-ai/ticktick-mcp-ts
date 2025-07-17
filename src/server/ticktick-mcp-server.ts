@@ -42,7 +42,20 @@ export class TickTickMcpServer {
 	private readonly tickTickClient: TickTickClient;
 
 	constructor(config: TickTickClientConfig = {}) {
-		this.tickTickClient = new TickTickClient(config);
+		// Проверяем наличие токена в конфигурации или переменных окружения
+		const accessToken = config.accessToken || process.env.TICKTICK_ACCESS_TOKEN;
+		if (!accessToken) {
+			throw new Error(
+				"Access token не найден. Установите TICKTICK_ACCESS_TOKEN в переменных окружения."
+			);
+		}
+
+		// Передаем токен в конфигурацию клиента
+		this.tickTickClient = new TickTickClient({
+			...config,
+			accessToken,
+		});
+
 		this.server = new McpServer({
 			name: "ticktick-mcp-server",
 			version: "1.0.0",
@@ -50,19 +63,6 @@ export class TickTickMcpServer {
 
 		this.setupTools();
 		this.setupResources();
-	}
-
-	/**
-	 * Получить токен доступа из параметров или переменных окружения
-	 */
-	private getAccessToken(providedToken?: string): string {
-		const token = providedToken || process.env.TICKTICK_ACCESS_TOKEN;
-		if (!token) {
-			throw new Error(
-				"Access token не найден. Передайте accessToken в параметрах или установите TICKTICK_ACCESS_TOKEN в переменных окружения."
-			);
-		}
-		return token;
 	}
 
 	/**
@@ -115,17 +115,11 @@ export class TickTickMcpServer {
 			{
 				title: "Получить проекты",
 				description: "Получить все проекты пользователя TickTick",
-				inputSchema: {
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
-				},
+				inputSchema: {},
 			},
-			async ({ accessToken }) => {
+			async () => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const projects = await this.tickTickClient.getProjects(token);
+					const projects = await this.tickTickClient.getProjects();
 
 					const responseData: ProjectsResponseData = {
 						count: projects.length,
@@ -140,7 +134,7 @@ export class TickTickMcpServer {
 					this.logger.error("Failed to get projects", error);
 					return this.createErrorResponse(
 						error,
-						`Ошибка при получении проектов: ${error}`
+						`Failed to get projects: ${error}`
 					);
 				}
 			}
@@ -154,18 +148,12 @@ export class TickTickMcpServer {
 				description: "Получить все задачи конкретного проекта",
 				inputSchema: {
 					projectId: z.string().describe("ID проекта"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
-			async ({ projectId, accessToken }) => {
+			async ({ projectId }) => {
 				try {
-					const token = this.getAccessToken(accessToken);
 					const projectData = await this.tickTickClient.getProjectWithData(
-						projectId,
-						token
+						projectId
 					);
 
 					const tasks = projectData.tasks || [];
@@ -198,20 +186,11 @@ export class TickTickMcpServer {
 				inputSchema: {
 					projectId: z.string().describe("ID проекта"),
 					taskId: z.string().describe("ID задачи"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
-			async ({ projectId, taskId, accessToken }) => {
+			async ({ projectId, taskId }) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const task = await this.tickTickClient.getTask(
-						projectId,
-						taskId,
-						token
-					);
+					const task = await this.tickTickClient.getTask(projectId, taskId);
 
 					const responseData: TaskResponseData = {
 						task: task,
@@ -298,10 +277,6 @@ export class TickTickMcpServer {
 						)
 						.optional()
 						.describe("Подзадачи"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
 			async ({
@@ -318,28 +293,23 @@ export class TickTickMcpServer {
 				priority,
 				sortOrder,
 				items,
-				accessToken,
 			}) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const task = await this.tickTickClient.createTask(
-						{
-							title,
-							projectId,
-							content,
-							desc,
-							isAllDay,
-							startDate,
-							dueDate,
-							timeZone,
-							reminders,
-							repeatFlag,
-							priority: priority ? PRIORITY_MAP[priority] : undefined,
-							sortOrder,
-							items,
-						},
-						token
-					);
+					const task = await this.tickTickClient.createTask({
+						title,
+						projectId,
+						content,
+						desc,
+						isAllDay,
+						startDate,
+						dueDate,
+						timeZone,
+						reminders,
+						repeatFlag,
+						priority: priority ? PRIORITY_MAP[priority] : undefined,
+						sortOrder,
+						items,
+					});
 
 					const responseData: CreateTaskResponseData = {
 						task: task,
@@ -430,10 +400,6 @@ export class TickTickMcpServer {
 						)
 						.optional()
 						.describe("Подзадачи"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
 			async ({
@@ -451,30 +417,24 @@ export class TickTickMcpServer {
 				priority,
 				sortOrder,
 				items,
-				accessToken,
 			}) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const task = await this.tickTickClient.updateTask(
-						taskId,
-						{
-							id: taskId,
-							projectId,
-							title,
-							content,
-							desc,
-							isAllDay,
-							startDate,
-							dueDate,
-							timeZone,
-							reminders,
-							repeatFlag,
-							priority: priority ? PRIORITY_MAP[priority] : undefined,
-							sortOrder,
-							items,
-						},
-						token
-					);
+					const task = await this.tickTickClient.updateTask(taskId, {
+						id: taskId,
+						projectId,
+						title,
+						content,
+						desc,
+						isAllDay,
+						startDate,
+						dueDate,
+						timeZone,
+						reminders,
+						repeatFlag,
+						priority: priority ? PRIORITY_MAP[priority] : undefined,
+						sortOrder,
+						items,
+					});
 
 					const responseData: TaskResponseData = {
 						task: task,
@@ -503,16 +463,11 @@ export class TickTickMcpServer {
 				inputSchema: {
 					projectId: z.string().describe("ID проекта"),
 					taskId: z.string().describe("ID задачи"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
-			async ({ projectId, taskId, accessToken }) => {
+			async ({ projectId, taskId }) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					await this.tickTickClient.completeTask(projectId, taskId, token);
+					await this.tickTickClient.completeTask(projectId, taskId);
 
 					const responseData: OperationResponseData = {
 						success: true,
@@ -544,16 +499,11 @@ export class TickTickMcpServer {
 				inputSchema: {
 					projectId: z.string().describe("ID проекта"),
 					taskId: z.string().describe("ID задачи"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
-			async ({ projectId, taskId, accessToken }) => {
+			async ({ projectId, taskId }) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					await this.tickTickClient.deleteTask(projectId, taskId, token);
+					await this.tickTickClient.deleteTask(projectId, taskId);
 
 					const responseData: OperationResponseData = {
 						success: true,
@@ -582,17 +532,11 @@ export class TickTickMcpServer {
 			{
 				title: "Получить задачи на сегодня",
 				description: "Получить все задачи со сроком выполнения на сегодня",
-				inputSchema: {
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
-				},
+				inputSchema: {},
 			},
-			async ({ accessToken }) => {
+			async () => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const projects = await this.tickTickClient.getProjects(token);
+					const projects = await this.tickTickClient.getProjects();
 
 					const today = new Date();
 					today.setHours(0, 0, 0, 0);
@@ -604,8 +548,7 @@ export class TickTickMcpServer {
 					for (const project of projects) {
 						try {
 							const projectData = await this.tickTickClient.getProjectWithData(
-								project.id,
-								token
+								project.id
 							);
 
 							const projectTodayTasks = projectData.tasks.filter((task) => {
@@ -650,17 +593,11 @@ export class TickTickMcpServer {
 			{
 				title: "Получить просроченные задачи",
 				description: "Получить все просроченные задачи",
-				inputSchema: {
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
-				},
+				inputSchema: {},
 			},
-			async ({ accessToken }) => {
+			async () => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const projects = await this.tickTickClient.getProjects(token);
+					const projects = await this.tickTickClient.getProjects();
 
 					const now = new Date();
 					now.setHours(0, 0, 0, 0);
@@ -670,8 +607,7 @@ export class TickTickMcpServer {
 					for (const project of projects) {
 						try {
 							const projectData = await this.tickTickClient.getProjectWithData(
-								project.id,
-								token
+								project.id
 							);
 
 							const projectOverdueTasks = projectData.tasks.filter((task) => {
@@ -730,25 +666,17 @@ export class TickTickMcpServer {
 						.number()
 						.optional()
 						.describe("Порядок сортировки проекта"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
-			async ({ name, color, viewMode, sortOrder, accessToken }) => {
+			async ({ name, color, viewMode, sortOrder }) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const project = await this.tickTickClient.createProject(
-						{
-							name,
-							color,
-							viewMode,
-							sortOrder,
-							kind: "TASK",
-						},
-						token
-					);
+					const project = await this.tickTickClient.createProject({
+						name,
+						color,
+						viewMode,
+						sortOrder,
+						kind: "TASK",
+					});
 
 					const responseData: CreateProjectResponseData = {
 						project: project,
@@ -789,25 +717,16 @@ export class TickTickMcpServer {
 						.number()
 						.optional()
 						.describe("Новый порядок сортировки проекта"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
-			async ({ projectId, name, color, viewMode, sortOrder, accessToken }) => {
+			async ({ projectId, name, color, viewMode, sortOrder }) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					const project = await this.tickTickClient.updateProject(
-						projectId,
-						{
-							name,
-							color,
-							viewMode,
-							sortOrder,
-						},
-						token
-					);
+					const project = await this.tickTickClient.updateProject(projectId, {
+						name,
+						color,
+						viewMode,
+						sortOrder,
+					});
 
 					const responseData: CreateProjectResponseData = {
 						project: project,
@@ -835,16 +754,11 @@ export class TickTickMcpServer {
 				description: "Удалить проект из TickTick",
 				inputSchema: {
 					projectId: z.string().describe("ID проекта"),
-					accessToken: z
-						.string()
-						.optional()
-						.describe("Access token (если не указан, берется из env)"),
 				},
 			},
-			async ({ projectId, accessToken }) => {
+			async ({ projectId }) => {
 				try {
-					const token = this.getAccessToken(accessToken);
-					await this.tickTickClient.deleteProject(projectId, token);
+					await this.tickTickClient.deleteProject(projectId);
 
 					const responseData: OperationResponseData = {
 						success: true,
@@ -945,14 +859,10 @@ Access Token в env: ${hasEnvToken ? "Да" : "Нет"}
 			},
 			async (uri, { projectId }) => {
 				try {
-					const token = this.getAccessToken();
 					const projectIdStr = Array.isArray(projectId)
 						? projectId[0]
 						: projectId;
-					const project = await this.tickTickClient.getProject(
-						projectIdStr,
-						token
-					);
+					const project = await this.tickTickClient.getProject(projectIdStr);
 
 					return {
 						contents: [
@@ -1033,13 +943,11 @@ Access Token в env: ${hasEnvToken ? "Да" : "Нет"}
 			},
 			async (uri, { projectId }) => {
 				try {
-					const token = this.getAccessToken();
 					const projectIdStr = Array.isArray(projectId)
 						? projectId[0]
 						: projectId;
 					const projectData = await this.tickTickClient.getProjectWithData(
-						projectIdStr,
-						token
+						projectIdStr
 					);
 
 					return {
@@ -1120,15 +1028,13 @@ Access Token в env: ${hasEnvToken ? "Да" : "Нет"}
 			},
 			async (uri, { projectId, taskId }) => {
 				try {
-					const token = this.getAccessToken();
 					const projectIdStr = Array.isArray(projectId)
 						? projectId[0]
 						: projectId;
 					const taskIdStr = Array.isArray(taskId) ? taskId[0] : taskId;
 					const task = await this.tickTickClient.getTask(
 						projectIdStr,
-						taskIdStr,
-						token
+						taskIdStr
 					);
 
 					return {
@@ -1209,8 +1115,7 @@ Access Token в env: ${hasEnvToken ? "Да" : "Нет"}
 			},
 			async (uri) => {
 				try {
-					const token = this.getAccessToken();
-					const projects = await this.tickTickClient.getProjects(token);
+					const projects = await this.tickTickClient.getProjects();
 
 					let totalTasks = 0;
 					let completedTasks = 0;
@@ -1228,8 +1133,7 @@ Access Token в env: ${hasEnvToken ? "Да" : "Нет"}
 					for (const project of projects) {
 						try {
 							const projectData = await this.tickTickClient.getProjectWithData(
-								project.id,
-								token
+								project.id
 							);
 							const tasks = projectData.tasks;
 

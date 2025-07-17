@@ -30,10 +30,16 @@ export class TickTickClient {
 	private readonly logger = new Logger(TickTickClient.name);
 	private readonly baseUrl: string;
 	private readonly timeout: number;
+	private readonly accessToken: string;
 
 	constructor(config: TickTickClientConfig = {}) {
 		this.baseUrl = config.baseUrl || "https://api.ticktick.com/open/v1";
 		this.timeout = config.timeout || 10000;
+
+		if (!config.accessToken) {
+			throw new Error("Access token обязателен для создания TickTickClient");
+		}
+		this.accessToken = config.accessToken;
 	}
 
 	/**
@@ -41,7 +47,6 @@ export class TickTickClient {
 	 */
 	private async makeAuthenticatedRequest<T>(
 		endpoint: string,
-		accessToken: string,
 		options: RequestInit = {}
 	): Promise<T> {
 		const url = `${this.baseUrl}${endpoint}`;
@@ -53,7 +58,7 @@ export class TickTickClient {
 			const response = await fetch(url, {
 				...options,
 				headers: {
-					Authorization: `Bearer ${accessToken}`,
+					Authorization: `Bearer ${this.accessToken}`,
 					"Content-Type": "application/json",
 					...options.headers,
 				},
@@ -88,41 +93,31 @@ export class TickTickClient {
 	/**
 	 * Получить все проекты пользователя
 	 */
-	async getProjects(accessToken: string): Promise<Project[]> {
-		return this.makeAuthenticatedRequest<Project[]>("/project", accessToken);
+	async getProjects(): Promise<Project[]> {
+		return this.makeAuthenticatedRequest<Project[]>("/project");
 	}
 
 	/**
 	 * Получить проект по ID
 	 */
-	async getProject(projectId: string, accessToken: string): Promise<Project> {
-		return this.makeAuthenticatedRequest<Project>(
-			`/project/${projectId}`,
-			accessToken
-		);
+	async getProject(projectId: string): Promise<Project> {
+		return this.makeAuthenticatedRequest<Project>(`/project/${projectId}`);
 	}
 
 	/**
 	 * Получить проект с данными (включая задачи)
 	 */
-	async getProjectWithData(
-		projectId: string,
-		accessToken: string
-	): Promise<ProjectData> {
+	async getProjectWithData(projectId: string): Promise<ProjectData> {
 		return this.makeAuthenticatedRequest<ProjectData>(
-			`/project/${projectId}/data`,
-			accessToken
+			`/project/${projectId}/data`
 		);
 	}
 
 	/**
 	 * Создать новый проект
 	 */
-	async createProject(
-		project: CreateProjectRequest,
-		accessToken: string
-	): Promise<Project> {
-		return this.makeAuthenticatedRequest<Project>("/project", accessToken, {
+	async createProject(project: CreateProjectRequest): Promise<Project> {
+		return this.makeAuthenticatedRequest<Project>("/project", {
 			method: "POST",
 			body: JSON.stringify(project),
 		});
@@ -133,54 +128,37 @@ export class TickTickClient {
 	 */
 	async updateProject(
 		projectId: string,
-		project: UpdateProjectRequest,
-		accessToken: string
+		project: UpdateProjectRequest
 	): Promise<Project> {
-		return this.makeAuthenticatedRequest<Project>(
-			`/project/${projectId}`,
-			accessToken,
-			{
-				method: "POST",
-				body: JSON.stringify(project),
-			}
-		);
+		return this.makeAuthenticatedRequest<Project>(`/project/${projectId}`, {
+			method: "POST",
+			body: JSON.stringify(project),
+		});
 	}
 
 	/**
 	 * Удалить проект
 	 */
-	async deleteProject(projectId: string, accessToken: string): Promise<void> {
-		await this.makeAuthenticatedRequest<void>(
-			`/project/${projectId}`,
-			accessToken,
-			{
-				method: "DELETE",
-			}
-		);
+	async deleteProject(projectId: string): Promise<void> {
+		await this.makeAuthenticatedRequest<void>(`/project/${projectId}`, {
+			method: "DELETE",
+		});
 	}
 
 	/**
 	 * Получить задачу по ID
 	 */
-	async getTask(
-		projectId: string,
-		taskId: string,
-		accessToken: string
-	): Promise<Task> {
+	async getTask(projectId: string, taskId: string): Promise<Task> {
 		return this.makeAuthenticatedRequest<Task>(
-			`/project/${projectId}/task/${taskId}`,
-			accessToken
+			`/project/${projectId}/task/${taskId}`
 		);
 	}
 
 	/**
 	 * Создать новую задачу
 	 */
-	async createTask(
-		task: CreateTaskRequest,
-		accessToken: string
-	): Promise<Task> {
-		return this.makeAuthenticatedRequest<Task>("/task", accessToken, {
+	async createTask(task: CreateTaskRequest): Promise<Task> {
+		return this.makeAuthenticatedRequest<Task>("/task", {
 			method: "POST",
 			body: JSON.stringify(task),
 		});
@@ -189,12 +167,8 @@ export class TickTickClient {
 	/**
 	 * Обновить задачу
 	 */
-	async updateTask(
-		taskId: string,
-		task: UpdateTaskRequest,
-		accessToken: string
-	): Promise<Task> {
-		return this.makeAuthenticatedRequest<Task>(`/task/${taskId}`, accessToken, {
+	async updateTask(taskId: string, task: UpdateTaskRequest): Promise<Task> {
+		return this.makeAuthenticatedRequest<Task>(`/task/${taskId}`, {
 			method: "POST",
 			body: JSON.stringify(task),
 		});
@@ -203,14 +177,9 @@ export class TickTickClient {
 	/**
 	 * Завершить задачу
 	 */
-	async completeTask(
-		projectId: string,
-		taskId: string,
-		accessToken: string
-	): Promise<void> {
+	async completeTask(projectId: string, taskId: string): Promise<void> {
 		await this.makeAuthenticatedRequest<void>(
 			`/project/${projectId}/task/${taskId}/complete`,
-			accessToken,
 			{
 				method: "POST",
 			}
@@ -220,14 +189,9 @@ export class TickTickClient {
 	/**
 	 * Удалить задачу
 	 */
-	async deleteTask(
-		projectId: string,
-		taskId: string,
-		accessToken: string
-	): Promise<void> {
+	async deleteTask(projectId: string, taskId: string): Promise<void> {
 		await this.makeAuthenticatedRequest<void>(
 			`/project/${projectId}/task/${taskId}`,
-			accessToken,
 			{
 				method: "DELETE",
 			}

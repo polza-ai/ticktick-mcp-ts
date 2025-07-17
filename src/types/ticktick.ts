@@ -315,4 +315,5 @@ export interface StatsResponseData {
 export interface TickTickClientConfig {
 	baseUrl?: string;
 	timeout?: number;
+	accessToken?: string;
 }
