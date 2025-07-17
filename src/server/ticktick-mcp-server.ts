@@ -15,8 +15,6 @@ import {
 	CreateTaskResponseData,
 	CreateProjectResponseData,
 	OperationResponseData,
-	TodayTasksResponseData,
-	OverdueTasksResponseData,
 	StatsResponseData,
 } from "../types/ticktick.js";
 
@@ -526,126 +524,6 @@ export class TickTickMcpServer {
 			}
 		);
 
-		// Инструмент для получения задач на сегодня
-		this.server.registerTool(
-			"get_today_tasks",
-			{
-				title: "Получить задачи на сегодня",
-				description: "Получить все задачи со сроком выполнения на сегодня",
-				inputSchema: {},
-			},
-			async () => {
-				try {
-					const projects = await this.tickTickClient.getProjects();
-
-					const today = new Date();
-					today.setHours(0, 0, 0, 0);
-					const tomorrow = new Date(today);
-					tomorrow.setDate(tomorrow.getDate() + 1);
-
-					const todayTasks = [];
-
-					for (const project of projects) {
-						try {
-							const projectData = await this.tickTickClient.getProjectWithData(
-								project.id
-							);
-
-							const projectTodayTasks = projectData.tasks.filter((task) => {
-								if (!task.dueDate || task.status === 2) return false; // Skip completed tasks
-
-								const dueDate = new Date(task.dueDate);
-								return dueDate >= today && dueDate < tomorrow;
-							});
-
-							todayTasks.push(...projectTodayTasks);
-						} catch (error) {
-							this.logger.warn(
-								`Failed to get tasks for project ${project.id}`,
-								error
-							);
-						}
-					}
-
-					const responseData: TodayTasksResponseData = {
-						date: today.toISOString().split("T")[0],
-						taskCount: todayTasks.length,
-						tasks: todayTasks,
-					};
-
-					return this.createSuccessResponse(
-						responseData,
-						`Найдено ${todayTasks.length} задач на сегодня`
-					);
-				} catch (error) {
-					this.logger.error("Failed to get today tasks", error);
-					return this.createErrorResponse(
-						error,
-						`Ошибка при получении задач на сегодня: ${error}`
-					);
-				}
-			}
-		);
-
-		// Инструмент для получения просроченных задач
-		this.server.registerTool(
-			"get_overdue_tasks",
-			{
-				title: "Получить просроченные задачи",
-				description: "Получить все просроченные задачи",
-				inputSchema: {},
-			},
-			async () => {
-				try {
-					const projects = await this.tickTickClient.getProjects();
-
-					const now = new Date();
-					now.setHours(0, 0, 0, 0);
-
-					const overdueTasks = [];
-
-					for (const project of projects) {
-						try {
-							const projectData = await this.tickTickClient.getProjectWithData(
-								project.id
-							);
-
-							const projectOverdueTasks = projectData.tasks.filter((task) => {
-								if (!task.dueDate || task.status === 2) return false; // Skip completed tasks
-
-								const dueDate = new Date(task.dueDate);
-								return dueDate < now;
-							});
-
-							overdueTasks.push(...projectOverdueTasks);
-						} catch (error) {
-							this.logger.warn(
-								`Failed to get tasks for project ${project.id}`,
-								error
-							);
-						}
-					}
-
-					const responseData: OverdueTasksResponseData = {
-						currentDate: now.toISOString().split("T")[0],
-						overdueCount: overdueTasks.length,
-						tasks: overdueTasks,
-					};
-
-					return this.createSuccessResponse(
-						responseData,
-						`Найдено ${overdueTasks.length} просроченных задач`
-					);
-				} catch (error) {
-					this.logger.error("Failed to get overdue tasks", error);
-					return this.createErrorResponse(
-						error,
-						`Ошибка при получении просроченных задач: ${error}`
-					);
-				}
-			}
-		);
-
 		// Инструмент для создания проекта
 		this.server.registerTool(
 			"create_project",
@@ -783,46 +661,6 @@ export class TickTickMcpServer {
 	}
 
 	private setupResources() {
-		// Ресурс для получения информации о конфигурации
-		this.server.registerResource(
-			"config_info",
-			new ResourceTemplate("ticktick://config", { list: undefined }),
-			{
-				title: "Информация о конфигурации TickTick",
-				description: `Получить информацию о текущей конфигурации
-
-Возвращает:
-- Base URL сервера TickTick API
-- Статус наличия access token в переменных окружения
-- Версию MCP сервера
-
-Пример ответа:
-\`\`\`
-Конфигурация TickTick MCP Server:
-Base URL: https://api.ticktick.com/open/v1
-Access Token в env: Да
-Версия: 1.0.0
-\`\`\``,
-			},
-			async (uri) => {
-				const hasEnvToken = !!process.env.TICKTICK_ACCESS_TOKEN;
-				const baseUrl =
-					this.tickTickClient["baseUrl"] || "https://api.ticktick.com/open/v1";
-
-				return {
-					contents: [
-						{
-							uri: uri.href,
-							text: `Конфигурация TickTick MCP Server:
-Base URL: ${baseUrl}
-Access Token в env: ${hasEnvToken ? "Да" : "Нет"}
-Версия: 1.0.0`,
-						},
-					],
-				};
-			}
-		);
-
 		// Динамический ресурс для проекта
 		this.server.registerResource(
 			"project_info",
@@ -1077,7 +915,6 @@ Access Token в env: ${hasEnvToken ? "Да" : "Нет"}
 
 Возвращает JSON с:
 - Общей статистикой (количество проектов, задач, выполненных, просроченных)
-- Задачами на сегодня
 - Детальной статистикой по каждому проекту
 - URI ресурса и временной меткой
 

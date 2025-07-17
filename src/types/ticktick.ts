@@ -280,18 +280,6 @@ export interface OperationResponseData {
 	details?: string;
 }
 
-export interface TodayTasksResponseData {
-	date: string;
-	taskCount: number;
-	tasks: Task[];
-}
-
-export interface OverdueTasksResponseData {
-	currentDate: string;
-	overdueCount: number;
-	tasks: Task[];
-}
-
 export interface StatsResponseData {
 	totalProjects: number;
 	totalTasks: number;
