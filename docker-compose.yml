@@ -1,0 +1,19 @@
+version: '3.8'
+
+services:
+  ticktick-mcp:
+    build: .
+    ports:
+      - "${SUPERGATEWAY_PORT:-8002}:${SUPERGATEWAY_PORT:-8002}"
+    environment:
+      # Порт для supergateway
+      - SUPERGATEWAY_PORT=${SUPERGATEWAY_PORT:-8002}
+      
+      # TickTick API конфигурация
+      - TICKTICK_ACCESS_TOKEN=${TICKTICK_ACCESS_TOKEN}
+      - TICKTICK_BASE_URL=${TICKTICK_BASE_URL:-https://api.ticktick.com/open/v1}
+      - TICKTICK_CLIENT_ID=${TICKTICK_CLIENT_ID}
+      - TICKTICK_CLIENT_SECRET=${TICKTICK_CLIENT_SECRET}
+      - TICKTICK_AUTH_URL=${TICKTICK_AUTH_URL:-https://ticktick.com/oauth/authorize}
+      - TICKTICK_TOKEN_URL=${TICKTICK_TOKEN_URL:-https://ticktick.com/oauth/token}
+    restart: unless-stopped
