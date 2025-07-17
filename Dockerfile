@@ -8,14 +8,17 @@ RUN npm install -g supergateway
 # Копируем package.json и package-lock.json
 COPY package*.json ./
 
-# Устанавливаем зависимости
-RUN npm ci --only=production
+# Устанавливаем все зависимости (включая devDependencies для сборки)
+RUN npm ci
 
 # Копируем исходный код
 COPY . .
 
 # Собираем TypeScript проект
 RUN npm run build
+
+# Удаляем devDependencies после сборки для уменьшения размера образа
+RUN npm prune --production
 
 # Создаем пользователя для безопасности
 RUN groupadd -r appuser && useradd -r -g appuser appuser
