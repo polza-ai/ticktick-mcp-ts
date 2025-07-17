@@ -16,6 +16,7 @@ import {
 	CreateProjectResponseData,
 	OperationResponseData,
 	StatsResponseData,
+	AllProjectsWithTasksResponseData,
 } from "../types/ticktick.js";
 
 class Logger {
@@ -658,297 +659,55 @@ export class TickTickMcpServer {
 				}
 			}
 		);
+
+		// Инструмент для получения всех проектов с задачами
+		this.server.registerTool(
+			"get_all_projects_with_tasks",
+			{
+				title: "Получить все проекты с задачами",
+				description:
+					"Получить все проекты пользователя вместе со всеми задачами в каждом проекте",
+				inputSchema: {},
+			},
+			async () => {
+				try {
+					const projectsWithData =
+						await this.tickTickClient.getAllProjectsWithTasks();
+
+					let totalTasks = 0;
+					for (const projectData of projectsWithData) {
+						totalTasks += projectData.tasks.length;
+					}
+
+					const responseData: AllProjectsWithTasksResponseData = {
+						totalProjects: projectsWithData.length,
+						totalTasks: totalTasks,
+						projectsWithTasks: projectsWithData,
+					};
+
+					return this.createSuccessResponse(
+						responseData,
+						`Получено ${projectsWithData.length} проектов с ${totalTasks} задачами`
+					);
+				} catch (error) {
+					this.logger.error("Failed to get all projects with tasks", error);
+					return this.createErrorResponse(
+						error,
+						`Ошибка при получении всех проектов с задачами: ${error}`
+					);
+				}
+			}
+		);
 	}
 
 	private setupResources() {
-		// Динамический ресурс для проекта
-		this.server.registerResource(
-			"project_info",
-			new ResourceTemplate("ticktick://project/{projectId}", {
-				list: undefined,
-			}),
-			{
-				title: "Информация о проекте",
-				description: `Получить детальную информацию о конкретном проекте
-
-Возвращает JSON с:
-- Полной информацией о проекте (название, цвет, режим отображения и т.д.)
-- URI ресурса
-- Временной меткой запроса
-
-Пример ответа:
-\`\`\`json
-{
-  "project": {
-    "id": "6226ff9877acee87727f6bca",
-    "name": "Рабочие задачи",
-    "color": "#F18181",
-    "sortOrder": 0,
-    "closed": false,
-    "groupId": "6436176a47fd2e05f26ef56e",
-    "viewMode": "list",
-    "permission": "write",
-    "kind": "TASK"
-  },
-  "uri": "ticktick://project/6226ff9877acee87727f6bca",
-  "timestamp": "2025-01-09T10:09:00.000Z"
-}
-\`\`\``,
-			},
-			async (uri, { projectId }) => {
-				try {
-					const projectIdStr = Array.isArray(projectId)
-						? projectId[0]
-						: projectId;
-					const project = await this.tickTickClient.getProject(projectIdStr);
-
-					return {
-						contents: [
-							{
-								uri: uri.href,
-								text: JSON.stringify(
-									{
-										project: project,
-										uri: uri.href,
-										timestamp: new Date().toISOString(),
-									},
-									null,
-									2
-								),
-								mimeType: "application/json",
-							},
-						],
-					};
-				} catch (error) {
-					return {
-						contents: [
-							{
-								uri: uri.href,
-								text: `Ошибка при получении проекта ${projectId}: ${error}`,
-							},
-						],
-					};
-				}
-			}
-		);
-
-		// Динамический ресурс для задач проекта
-		this.server.registerResource(
-			"project_tasks",
-			new ResourceTemplate("ticktick://project/{projectId}/tasks", {
-				list: undefined,
-			}),
-			{
-				title: "Задачи проекта",
-				description: `Получить все задачи конкретного проекта
-
-Возвращает JSON с:
-- Информацией о проекте
-- Количеством задач в проекте
-- Массивом всех задач проекта (включая подзадачи, напоминания и т.д.)
-- URI ресурса и временной меткой
-
-Пример ответа:
-\`\`\`json
-{
-  "project": {
-    "id": "6226ff9877acee87727f6bca",
-    "name": "Рабочие задачи",
-    "color": "#F18181"
-  },
-  "taskCount": 3,
-  "tasks": [
-    {
-      "id": "6247ee29630c800f064fd145",
-      "title": "Завершить отчет",
-      "content": "Подготовить квартальный отчет",
-      "dueDate": "2025-01-10T15:00:00+0000",
-      "priority": 3,
-      "status": 0,
-      "items": [
-        {
-          "id": "6435074647fd2e6387145f20",
-          "title": "Собрать данные",
-          "status": 1
-        }
-      ]
-    }
-  ],
-  "uri": "ticktick://project/6226ff9877acee87727f6bca/tasks",
-  "timestamp": "2025-01-09T10:09:00.000Z"
-}
-\`\`\``,
-			},
-			async (uri, { projectId }) => {
-				try {
-					const projectIdStr = Array.isArray(projectId)
-						? projectId[0]
-						: projectId;
-					const projectData = await this.tickTickClient.getProjectWithData(
-						projectIdStr
-					);
-
-					return {
-						contents: [
-							{
-								uri: uri.href,
-								text: JSON.stringify(
-									{
-										project: projectData.project,
-										taskCount: projectData.tasks.length,
-										tasks: projectData.tasks,
-										uri: uri.href,
-										timestamp: new Date().toISOString(),
-									},
-									null,
-									2
-								),
-								mimeType: "application/json",
-							},
-						],
-					};
-				} catch (error) {
-					return {
-						contents: [
-							{
-								uri: uri.href,
-								text: `Ошибка при получении задач проекта ${projectId}: ${error}`,
-							},
-						],
-					};
-				}
-			}
-		);
-
-		// Динамический ресурс для конкретной задачи
-		this.server.registerResource(
-			"task_info",
-			new ResourceTemplate("ticktick://project/{projectId}/task/{taskId}", {
-				list: undefined,
-			}),
-			{
-				title: "Информация о задаче",
-				description: `Получить детальную информацию о конкретной задаче
-
-Возвращает JSON с:
-- Полной информацией о задаче (название, описание, сроки, приоритет и т.д.)
-- Подзадачами (если есть)
-- Напоминаниями и правилами повторения
-- URI ресурса и временной меткой
-
-Пример ответа:
-\`\`\`json
-{
-  "task": {
-    "id": "6247ee29630c800f064fd145",
-    "projectId": "6226ff9877acee87727f6bca",
-    "title": "Завершить отчет",
-    "content": "Подготовить квартальный отчет",
-    "desc": "Включить данные за Q4",
-    "dueDate": "2025-01-10T15:00:00+0000",
-    "priority": 3,
-    "status": 0,
-    "timeZone": "Europe/Moscow",
-    "reminders": ["TRIGGER:P0DT1H0M0S"],
-    "items": [
-      {
-        "id": "6435074647fd2e6387145f20",
-        "title": "Собрать данные",
-        "status": 1,
-        "completedTime": "2025-01-09T10:00:00+0000"
-      }
-    ]
-  },
-  "uri": "ticktick://project/6226ff9877acee87727f6bca/task/6247ee29630c800f064fd145",
-  "timestamp": "2025-01-09T10:09:00.000Z"
-}
-\`\`\``,
-			},
-			async (uri, { projectId, taskId }) => {
-				try {
-					const projectIdStr = Array.isArray(projectId)
-						? projectId[0]
-						: projectId;
-					const taskIdStr = Array.isArray(taskId) ? taskId[0] : taskId;
-					const task = await this.tickTickClient.getTask(
-						projectIdStr,
-						taskIdStr
-					);
-
-					return {
-						contents: [
-							{
-								uri: uri.href,
-								text: JSON.stringify(
-									{
-										task: task,
-										uri: uri.href,
-										timestamp: new Date().toISOString(),
-									},
-									null,
-									2
-								),
-								mimeType: "application/json",
-							},
-						],
-					};
-				} catch (error) {
-					return {
-						contents: [
-							{
-								uri: uri.href,
-								text: `Ошибка при получении задачи ${taskId} из проекта ${projectId}: ${error}`,
-							},
-						],
-					};
-				}
-			}
-		);
-
 		// Ресурс для статистики
 		this.server.registerResource(
 			"stats",
 			new ResourceTemplate("ticktick://stats", { list: undefined }),
 			{
 				title: "Статистика TickTick",
-				description: `Получить общую статистику по проектам и задачам
-
-Возвращает JSON с:
-- Общей статистикой (количество проектов, задач, выполненных, просроченных)
-- Детальной статистикой по каждому проекту
-- URI ресурса и временной меткой
-
-Пример ответа:
-\`\`\`json
-{
-  "stats": {
-    "totalProjects": 3,
-    "totalTasks": 15,
-    "completedTasks": 8,
-    "pendingTasks": 7,
-    "overdueTasksCount": 2,
-    "todayTasksCount": 3,
-    "projectStats": [
-      {
-        "projectId": "6226ff9877acee87727f6bca",
-        "projectName": "Рабочие задачи",
-        "totalTasks": 8,
-        "completedTasks": 5,
-        "pendingTasks": 3
-      },
-      {
-        "projectId": "6226ff9877acee87727f6bcb",
-        "projectName": "Личные дела",
-        "totalTasks": 7,
-        "completedTasks": 3,
-        "pendingTasks": 4
-      }
-    ]
-  },
-  "uri": "ticktick://stats",
-  "timestamp": "2025-01-09T10:09:00.000Z"
-}
-\`\`\``,
+				description: `Получить общую статистику по проектам и задачам\nВозвращает JSON с:\n- Общей статистикой (количество проектов, задач, выполненных, просроченных)\n- Детальной статистикой по каждому проекту\n- URI ресурса и временной меткой`,
 			},
 			async (uri) => {
 				try {

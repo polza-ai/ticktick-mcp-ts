@@ -296,6 +296,12 @@ export interface StatsResponseData {
 	}[];
 }
 
+export interface AllProjectsWithTasksResponseData {
+	totalProjects: number;
+	totalTasks: number;
+	projectsWithTasks: ProjectData[];
+}
+
 // ============================================================================
 // CONFIGURATION TYPES
 // ============================================================================

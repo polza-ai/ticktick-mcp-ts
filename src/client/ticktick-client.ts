@@ -197,4 +197,32 @@ export class TickTickClient {
 			}
 		);
 	}
+
+	/**
+	 * Получить все проекты с их задачами
+	 */
+	async getAllProjectsWithTasks(): Promise<ProjectData[]> {
+		const projects = await this.getProjects();
+		const projectsWithData: ProjectData[] = [];
+
+		for (const project of projects) {
+			try {
+				const projectData = await this.getProjectWithData(project.id);
+				projectsWithData.push(projectData);
+			} catch (error) {
+				this.logger.warn(
+					`Failed to get data for project ${project.id} (${project.name})`,
+					error
+				);
+				// Добавляем проект без задач в случае ошибки
+				projectsWithData.push({
+					project: project,
+					tasks: [],
+					columns: [],
+				});
+			}
+		}
+
+		return projectsWithData;
+	}
 }
