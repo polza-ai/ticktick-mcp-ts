@@ -371,8 +371,8 @@ export class TickTickClient {
 			throw new TickTickValidationError("ID проекта обязателен");
 		}
 
-		// Валидация дат
-		if (task.startDate && !validateISO8601Date(task.startDate)) {
+		// Валидация и нормализация дат
+		if (task.startDate) {
 			try {
 				task.startDate = formatDateToISO8601(task.startDate);
 			} catch (error) {
@@ -383,7 +383,7 @@ export class TickTickClient {
 			}
 		}
 
-		if (task.dueDate && !validateISO8601Date(task.dueDate)) {
+		if (task.dueDate) {
 			try {
 				task.dueDate = formatDateToISO8601(task.dueDate);
 			} catch (error) {
@@ -421,7 +421,7 @@ export class TickTickClient {
 					);
 				}
 
-				if (item.startDate && !validateISO8601Date(item.startDate)) {
+				if (item.startDate) {
 					try {
 						item.startDate = formatDateToISO8601(item.startDate);
 					} catch (error) {
@@ -464,8 +464,8 @@ export class TickTickClient {
 			throw new TickTickValidationError("ID проекта обязателен");
 		}
 
-		// Валидация дат
-		if (task.startDate && !validateISO8601Date(task.startDate)) {
+		// Валидация и нормализация дат
+		if (task.startDate) {
 			try {
 				task.startDate = formatDateToISO8601(task.startDate);
 			} catch (error) {
@@ -476,7 +476,7 @@ export class TickTickClient {
 			}
 		}
 
-		if (task.dueDate && !validateISO8601Date(task.dueDate)) {
+		if (task.dueDate) {
 			try {
 				task.dueDate = formatDateToISO8601(task.dueDate);
 			} catch (error) {
@@ -521,7 +521,7 @@ export class TickTickClient {
 					);
 				}
 
-				if (item.startDate && !validateISO8601Date(item.startDate)) {
+				if (item.startDate) {
 					try {
 						item.startDate = formatDateToISO8601(item.startDate);
 					} catch (error) {

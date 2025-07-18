@@ -28,7 +28,8 @@ export function validateISO8601Date(date: string): boolean {
 export function formatDateToISO8601(date: Date | string): string {
 	if (typeof date === "string") {
 		if (validateISO8601Date(date)) {
-			return date;
+			// Принудительно заменяем "Z" на "+0000" для совместимости с TickTick API
+			return date.endsWith("Z") ? date.replace("Z", "+0000") : date;
 		}
 		// Пытаемся распарсить строку как дату
 		const parsedDate = new Date(date);
