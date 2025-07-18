@@ -20,6 +20,14 @@
   ],
   "author": "Ilya",
   "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/polza-ai/ticktick-mcp-ts.git"
+  },
+  "homepage": "https://github.com/polza-ai/ticktick-mcp-ts#readme",
+  "bugs": {
+    "url": "https://github.com/polza-ai/ticktick-mcp-ts/issues"
+  },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.15.0",
     "dotenv": "^16.6.1",
