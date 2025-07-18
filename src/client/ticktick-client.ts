@@ -79,7 +79,21 @@ export class TickTickClient {
 				);
 			}
 
-			return response.json();
+			// Проверяем, есть ли содержимое в ответе
+			const contentLength = response.headers.get("content-length");
+			const contentType = response.headers.get("content-type");
+
+			// Если нет содержимого или это не JSON, возвращаем undefined
+			if (contentLength === "0" || !contentType?.includes("application/json")) {
+				return undefined as T;
+			}
+
+			const text = await response.text();
+			if (!text.trim()) {
+				return undefined as T;
+			}
+
+			return JSON.parse(text);
 		} catch (error) {
 			clearTimeout(timeoutId);
 			if (error instanceof TickTickApiError) {
