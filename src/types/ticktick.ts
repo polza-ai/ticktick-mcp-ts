@@ -220,21 +220,119 @@ export const PRIORITY_REVERSE_MAP: Record<number, Priority> = {
 // ERROR TYPES
 // ============================================================================
 
+export enum TickTickErrorCode {
+	UNAUTHORIZED = "UNAUTHORIZED",
+	FORBIDDEN = "FORBIDDEN",
+	NOT_FOUND = "NOT_FOUND",
+	RATE_LIMITED = "RATE_LIMITED",
+	SERVER_ERROR = "SERVER_ERROR",
+	NETWORK_ERROR = "NETWORK_ERROR",
+	VALIDATION_ERROR = "VALIDATION_ERROR",
+	TIMEOUT_ERROR = "TIMEOUT_ERROR",
+}
+
 export interface TickTickError {
 	message: string;
 	status?: number;
-	code?: string;
+	code?: TickTickErrorCode;
+	details?: any;
+	retryable?: boolean;
 }
 
 export class TickTickApiError extends Error {
 	public status?: number;
-	public code?: string;
+	public code?: TickTickErrorCode;
+	public details?: any;
+	public retryable: boolean;
 
-	constructor(message: string, status?: number, code?: string) {
+	constructor(
+		message: string,
+		status?: number,
+		code?: TickTickErrorCode,
+		details?: any,
+		retryable: boolean = false
+	) {
 		super(message);
 		this.name = "TickTickApiError";
 		this.status = status;
 		this.code = code;
+		this.details = details;
+		this.retryable = retryable;
+	}
+
+	/**
+	 * Создает ошибку на основе HTTP статуса
+	 */
+	static fromHttpStatus(
+		status: number,
+		message?: string,
+		details?: any
+	): TickTickApiError {
+		let code: TickTickErrorCode;
+		let retryable = false;
+		let defaultMessage = message;
+
+		switch (status) {
+			case 401:
+				code = TickTickErrorCode.UNAUTHORIZED;
+				defaultMessage =
+					defaultMessage || "Неавторизованный доступ. Проверьте токен доступа.";
+				break;
+			case 403:
+				code = TickTickErrorCode.FORBIDDEN;
+				defaultMessage =
+					defaultMessage || "Доступ запрещен. Недостаточно прав.";
+				break;
+			case 404:
+				code = TickTickErrorCode.NOT_FOUND;
+				defaultMessage = defaultMessage || "Ресурс не найден.";
+				break;
+			case 429:
+				code = TickTickErrorCode.RATE_LIMITED;
+				defaultMessage =
+					defaultMessage || "Превышен лимит запросов. Попробуйте позже.";
+				retryable = true;
+				break;
+			case 500:
+			case 502:
+			case 503:
+			case 504:
+				code = TickTickErrorCode.SERVER_ERROR;
+				defaultMessage = defaultMessage || "Ошибка сервера. Попробуйте позже.";
+				retryable = true;
+				break;
+			default:
+				code = TickTickErrorCode.SERVER_ERROR;
+				defaultMessage = defaultMessage || `HTTP ошибка: ${status}`;
+		}
+
+		return new TickTickApiError(
+			defaultMessage,
+			status,
+			code,
+			details,
+			retryable
+		);
+	}
+
+	/**
+	 * Проверяет, можно ли повторить запрос
+	 */
+	isRetryable(): boolean {
+		return this.retryable;
+	}
+}
+
+export class TickTickValidationError extends TickTickApiError {
+	constructor(message: string, details?: any) {
+		super(
+			message,
+			undefined,
+			TickTickErrorCode.VALIDATION_ERROR,
+			details,
+			false
+		);
+		this.name = "TickTickValidationError";
 	}
 }
 

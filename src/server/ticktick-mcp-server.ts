@@ -545,16 +545,21 @@ export class TickTickMcpServer {
 						.number()
 						.optional()
 						.describe("Порядок сортировки проекта"),
+					kind: z
+						.enum(["TASK", "NOTE"])
+						.optional()
+						.default("TASK")
+						.describe("Тип проекта (TASK или NOTE)"),
 				},
 			},
-			async ({ name, color, viewMode, sortOrder }) => {
+			async ({ name, color, viewMode, sortOrder, kind }) => {
 				try {
 					const project = await this.tickTickClient.createProject({
 						name,
 						color,
 						viewMode,
 						sortOrder,
-						kind: "TASK",
+						kind,
 					});
 
 					const responseData: CreateProjectResponseData = {
@@ -596,15 +601,20 @@ export class TickTickMcpServer {
 						.number()
 						.optional()
 						.describe("Новый порядок сортировки проекта"),
+					kind: z
+						.enum(["TASK", "NOTE"])
+						.optional()
+						.describe("Новый тип проекта (TASK или NOTE)"),
 				},
 			},
-			async ({ projectId, name, color, viewMode, sortOrder }) => {
+			async ({ projectId, name, color, viewMode, sortOrder, kind }) => {
 				try {
 					const project = await this.tickTickClient.updateProject(projectId, {
 						name,
 						color,
 						viewMode,
 						sortOrder,
+						kind,
 					});
 
 					const responseData: CreateProjectResponseData = {
