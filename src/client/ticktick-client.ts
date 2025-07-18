@@ -110,14 +110,51 @@ export class TickTickClient {
 					{ endpoint, errorDetails, retryCount }
 				);
 
+				// Создаем более информативное сообщение об ошибке
+				let enhancedMessage = "";
+				if (response.status === 404) {
+					if (endpoint.includes("/project/") && endpoint.includes("/task/")) {
+						const pathParts = endpoint.split("/");
+						const projectId = pathParts[2];
+						const taskId = pathParts[4];
+						enhancedMessage = `Задача с ID "${taskId}" не найдена в проекте "${projectId}". Проверьте правильность ID или используйте get_all_projects_with_tasks для получения актуальных ID.`;
+					} else if (endpoint.includes("/project/")) {
+						const projectId = endpoint.split("/")[2];
+						enhancedMessage = `Проект с ID "${projectId}" не найден. Используйте get_projects для получения списка доступных проектов.`;
+					} else {
+						enhancedMessage = "Ресурс не найден. Проверьте правильность ID.";
+					}
+				} else if (
+					response.status === 500 &&
+					errorDetails?.errorCode === "unknown_exception"
+				) {
+					if (endpoint.includes("/project/") && endpoint.includes("/task/")) {
+						const pathParts = endpoint.split("/");
+						const projectId = pathParts[2];
+						const taskId = pathParts[4];
+						enhancedMessage = `Внутренняя ошибка сервера при работе с задачей "${taskId}" в проекте "${projectId}". Возможные причины: неверный ID проекта или задачи, задача уже завершена, или нет прав доступа. Используйте get_all_projects_with_tasks для проверки актуальных ID.`;
+					} else {
+						enhancedMessage =
+							"Внутренняя ошибка сервера. Проверьте правильность параметров запроса.";
+					}
+				}
+
 				const apiError = TickTickApiError.fromHttpStatus(
 					response.status,
-					undefined,
+					enhancedMessage || undefined,
 					errorDetails
 				);
 
-				// Retry для retryable ошибок
-				if (apiError.isRetryable() && retryCount < maxRetries) {
+				// Retry для retryable ошибок, но не для 404 и некоторых 500 ошибок
+				const shouldRetry =
+					apiError.isRetryable() &&
+					response.status !== 404 &&
+					!(
+						response.status === 500 &&
+						errorDetails?.errorCode === "unknown_exception"
+					);
+
+				if (shouldRetry && retryCount < maxRetries) {
 					this.logger.warn(
 						`Retrying request to ${endpoint} in ${retryDelay}ms (attempt ${
 							retryCount + 1
@@ -581,7 +618,20 @@ export class TickTickClient {
 		for (const project of projects) {
 			try {
 				const projectData = await this.getProjectWithData(project.id);
-				projectsWithData.push(projectData);
+
+				// Обрезаем content задач для экономии места
+				const truncatedTasks = projectData.tasks.map((task) => ({
+					...task,
+					content:
+						task.content && task.content.length > 200
+							? task.content.substring(0, 200) + "..."
+							: task.content,
+				}));
+
+				projectsWithData.push({
+					...projectData,
+					tasks: truncatedTasks,
+				});
 			} catch (error) {
 				this.logger.warn(
 					`Failed to get data for project ${project.id} (${project.name})`,
