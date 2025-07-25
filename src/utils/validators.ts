@@ -2,69 +2,69 @@
  * Утилиты для валидации данных TickTick API
  */
 
+import {
+	validateISO8601Date,
+	formatDateToISO8601,
+	validateTimeZone,
+	validateDateRange,
+	parseAndFormatDate,
+	validateRRule,
+	convertDateBetweenTimeZones,
+	timestampToISO8601,
+	iso8601ToTimestamp,
+} from "./date-utils.js";
+
+// Реэкспортируем функции из date-utils для обратной совместимости
+export {
+	validateISO8601Date,
+	formatDateToISO8601,
+	validateTimeZone,
+	validateDateRange,
+	parseAndFormatDate,
+	validateRRule,
+	convertDateBetweenTimeZones,
+	timestampToISO8601,
+	iso8601ToTimestamp,
+};
+
 /**
- * Проверяет, является ли строка валидной датой в формате ISO 8601
+ * Валидирует даты задачи (startDate и dueDate)
+ * @throws {Error} Если даты невалидны или startDate позже dueDate
  */
-export function validateISO8601Date(date: string): boolean {
-	if (!date || typeof date !== "string") {
-		return false;
+export function validateTaskDates(startDate?: string, dueDate?: string): void {
+	// Если даты не указаны, считаем валидными
+	if (!startDate && !dueDate) {
+		return;
 	}
 
-	// Проверяем формат ISO 8601: YYYY-MM-DDTHH:mm:ss+0000 или YYYY-MM-DDTHH:mm:ssZ
-	const iso8601Regex = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}([+-]\d{4}|Z)$/;
-
-	if (!iso8601Regex.test(date)) {
-		return false;
+	// Проверяем формат дат
+	if (startDate && !validateISO8601Date(startDate)) {
+		throw new Error(`Невалидный формат даты начала: ${startDate}`);
 	}
 
-	// Проверяем, что дата действительно валидна
-	const parsedDate = new Date(date);
-	return !isNaN(parsedDate.getTime());
+	if (dueDate && !validateISO8601Date(dueDate)) {
+		throw new Error(`Невалидный формат даты окончания: ${dueDate}`);
+	}
+
+	// Проверяем, что дата начала не позже даты окончания
+	if (startDate && dueDate && !validateDateRange(startDate, dueDate)) {
+		throw new Error(
+			`Дата начала (${startDate}) позже даты окончания (${dueDate})`
+		);
+	}
 }
 
 /**
- * Преобразует Date объект или строку в формат ISO 8601, требуемый TickTick API
+ * Валидирует правило повторения задачи
+ * @throws {Error} Если правило повторения невалидно
  */
-export function formatDateToISO8601(date: Date | string): string {
-	if (typeof date === "string") {
-		if (validateISO8601Date(date)) {
-			// Принудительно заменяем "Z" на "+0000" для совместимости с TickTick API
-			return date.endsWith("Z") ? date.replace("Z", "+0000") : date;
-		}
-		// Пытаемся распарсить строку как дату
-		const parsedDate = new Date(date);
-		if (isNaN(parsedDate.getTime())) {
-			throw new Error(`Невалидная дата: ${date}`);
-		}
-		date = parsedDate;
+export function validateTaskRepeatFlag(repeatFlag?: string): void {
+	if (!repeatFlag) {
+		return;
 	}
 
-	if (!(date instanceof Date)) {
-		throw new Error("Дата должна быть объектом Date или строкой");
-	}
-
-	if (isNaN(date.getTime())) {
-		throw new Error("Невалидная дата");
-	}
-
-	// Форматируем в ISO 8601 с UTC offset +0000
-	return date.toISOString().replace("Z", "+0000");
-}
-
-/**
- * Валидирует временную зону
- */
-export function validateTimeZone(timeZone: string): boolean {
-	if (!timeZone || typeof timeZone !== "string") {
-		return false;
-	}
-
-	try {
-		// Проверяем, что временная зона валидна
-		Intl.DateTimeFormat(undefined, { timeZone });
-		return true;
-	} catch {
-		return false;
+	if (!validateRRule(repeatFlag)) {
+		throw new Error(`Невалидное правило повторения: ${repeatFlag}`);
 	}
 }
 

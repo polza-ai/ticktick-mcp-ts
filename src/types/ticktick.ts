@@ -31,7 +31,7 @@ export interface ChecklistItem {
 	completedTime?: string; // ISO 8601 format
 	isAllDay?: boolean;
 	sortOrder?: number;
-	startDate?: string; // ISO 8601 format
+	startDate?: string | number; // ISO 8601 format или timestamp в миллисекундах
 	timeZone?: string;
 }
 

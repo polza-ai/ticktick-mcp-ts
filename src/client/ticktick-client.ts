@@ -19,6 +19,11 @@ import {
 	validateProjectColor,
 	validateViewMode,
 	validateProjectKind,
+	validateDateRange,
+	parseAndFormatDate,
+	validateRRule,
+	validateTaskDates,
+	validateTaskRepeatFlag,
 } from "../utils/validators.js";
 
 class Logger {
@@ -411,7 +416,8 @@ export class TickTickClient {
 		// Валидация и нормализация дат
 		if (task.startDate) {
 			try {
-				task.startDate = formatDateToISO8601(task.startDate);
+				// Используем parseAndFormatDate для поддержки различных форматов дат
+				task.startDate = parseAndFormatDate(task.startDate, task.timeZone);
 			} catch (error) {
 				throw new TickTickValidationError(
 					`Невалидная дата начала: ${task.startDate}`,
@@ -422,12 +428,35 @@ export class TickTickClient {
 
 		if (task.dueDate) {
 			try {
-				task.dueDate = formatDateToISO8601(task.dueDate);
+				// Используем parseAndFormatDate для поддержки различных форматов дат
+				task.dueDate = parseAndFormatDate(task.dueDate, task.timeZone);
 			} catch (error) {
 				throw new TickTickValidationError(
 					`Невалидная дата окончания: ${task.dueDate}`,
 					{ field: "dueDate", value: task.dueDate }
 				);
+			}
+		}
+
+		// Проверяем, что дата начала не позже даты окончания
+		try {
+			validateTaskDates(task.startDate, task.dueDate);
+		} catch (error) {
+			throw new TickTickValidationError((error as Error).message, {
+				field: "dateRange",
+				value: { startDate: task.startDate, dueDate: task.dueDate },
+			});
+		}
+
+		// Валидация правила повторения
+		if (task.repeatFlag) {
+			try {
+				validateTaskRepeatFlag(task.repeatFlag);
+			} catch (error) {
+				throw new TickTickValidationError((error as Error).message, {
+					field: "repeatFlag",
+					value: task.repeatFlag,
+				});
 			}
 		}
 
@@ -460,7 +489,15 @@ export class TickTickClient {
 
 				if (item.startDate) {
 					try {
-						item.startDate = formatDateToISO8601(item.startDate);
+						// Для подзадач поддерживаем как строки, так и timestamp
+						if (typeof item.startDate === "number") {
+							// Если это timestamp, просто используем его
+							// Никаких преобразований не требуется, API ожидает timestamp для подзадач
+						} else {
+							// Если это строка, преобразуем в timestamp
+							const dateStr = parseAndFormatDate(item.startDate, item.timeZone);
+							item.startDate = new Date(dateStr).getTime();
+						}
 					} catch (error) {
 						throw new TickTickValidationError(
 							`Невалидная дата начала подзадачи ${i + 1}: ${item.startDate}`,
@@ -504,7 +541,8 @@ export class TickTickClient {
 		// Валидация и нормализация дат
 		if (task.startDate) {
 			try {
-				task.startDate = formatDateToISO8601(task.startDate);
+				// Используем parseAndFormatDate для поддержки различных форматов дат
+				task.startDate = parseAndFormatDate(task.startDate, task.timeZone);
 			} catch (error) {
 				throw new TickTickValidationError(
 					`Невалидная дата начала: ${task.startDate}`,
@@ -515,12 +553,35 @@ export class TickTickClient {
 
 		if (task.dueDate) {
 			try {
-				task.dueDate = formatDateToISO8601(task.dueDate);
+				// Используем parseAndFormatDate для поддержки различных форматов дат
+				task.dueDate = parseAndFormatDate(task.dueDate, task.timeZone);
 			} catch (error) {
 				throw new TickTickValidationError(
 					`Невалидная дата окончания: ${task.dueDate}`,
 					{ field: "dueDate", value: task.dueDate }
 				);
+			}
+		}
+
+		// Проверяем, что дата начала не позже даты окончания
+		try {
+			validateTaskDates(task.startDate, task.dueDate);
+		} catch (error) {
+			throw new TickTickValidationError((error as Error).message, {
+				field: "dateRange",
+				value: { startDate: task.startDate, dueDate: task.dueDate },
+			});
+		}
+
+		// Валидация правила повторения
+		if (task.repeatFlag) {
+			try {
+				validateTaskRepeatFlag(task.repeatFlag);
+			} catch (error) {
+				throw new TickTickValidationError((error as Error).message, {
+					field: "repeatFlag",
+					value: task.repeatFlag,
+				});
 			}
 		}
 
@@ -560,7 +621,15 @@ export class TickTickClient {
 
 				if (item.startDate) {
 					try {
-						item.startDate = formatDateToISO8601(item.startDate);
+						// Для подзадач поддерживаем как строки, так и timestamp
+						if (typeof item.startDate === "number") {
+							// Если это timestamp, просто используем его
+							// Никаких преобразований не требуется, API ожидает timestamp для подзадач
+						} else {
+							// Если это строка, преобразуем в timestamp
+							const dateStr = parseAndFormatDate(item.startDate, item.timeZone);
+							item.startDate = new Date(dateStr).getTime();
+						}
 					} catch (error) {
 						throw new TickTickValidationError(
 							`Невалидная дата начала подзадачи ${i + 1}: ${item.startDate}`,

@@ -18,6 +18,7 @@ import {
 	StatsResponseData,
 	AllProjectsWithTasksResponseData,
 } from "../types/ticktick.js";
+import { validateTimeZone } from "../utils/validators.js";
 
 class Logger {
 	constructor(private context: string) {}
@@ -224,11 +225,13 @@ export class TickTickMcpServer {
 					startDate: z
 						.string()
 						.optional()
-						.describe("Дата начала (ISO 8601 формат)"),
+						.describe("Дата начала (ISO 8601, локальная дата или timestamp)"),
 					dueDate: z
 						.string()
 						.optional()
-						.describe("Срок выполнения (ISO 8601 формат)"),
+						.describe(
+							"Срок выполнения (ISO 8601, локальная дата или timestamp)"
+						),
 					timeZone: z
 						.string()
 						.optional()
@@ -261,9 +264,9 @@ export class TickTickMcpServer {
 									.optional()
 									.describe("Подзадача на весь день"),
 								startDate: z
-									.string()
+									.union([z.string(), z.number()])
 									.optional()
-									.describe("Дата начала подзадачи"),
+									.describe("Дата начала подзадачи (строка или timestamp)"),
 								timeZone: z
 									.string()
 									.optional()
@@ -344,11 +347,15 @@ export class TickTickMcpServer {
 					startDate: z
 						.string()
 						.optional()
-						.describe("Новая дата начала (ISO 8601 формат)"),
+						.describe(
+							"Новая дата начала (ISO 8601, локальная дата или timestamp)"
+						),
 					dueDate: z
 						.string()
 						.optional()
-						.describe("Новый срок выполнения (ISO 8601 формат)"),
+						.describe(
+							"Новый срок выполнения (ISO 8601, локальная дата или timestamp)"
+						),
 					timeZone: z
 						.string()
 						.optional()
@@ -384,9 +391,9 @@ export class TickTickMcpServer {
 									.optional()
 									.describe("Подзадача на весь день"),
 								startDate: z
-									.string()
+									.union([z.string(), z.number()])
 									.optional()
-									.describe("Дата начала подзадачи"),
+									.describe("Дата начала подзадачи (строка или timestamp)"),
 								timeZone: z
 									.string()
 									.optional()
@@ -729,8 +736,14 @@ export class TickTickMcpServer {
 					let overdueTasksCount = 0;
 					let todayTasksCount = 0;
 
-					const today = new Date();
+					// Получаем текущую дату в UTC
+					const now = new Date();
+
+					// Создаем сегодняшнюю дату в начале дня (00:00:00)
+					const today = new Date(now);
 					today.setHours(0, 0, 0, 0);
+
+					// Создаем завтрашнюю дату
 					const tomorrow = new Date(today);
 					tomorrow.setDate(tomorrow.getDate() + 1);
 
@@ -755,12 +768,51 @@ export class TickTickMcpServer {
 								if (task.status === 2) continue; // Skip completed tasks
 
 								if (task.dueDate) {
+									// Парсим дату с учетом временной зоны задачи
 									const dueDate = new Date(task.dueDate);
 
-									if (dueDate < today) {
-										overdueTasksCount++;
-									} else if (dueDate >= today && dueDate < tomorrow) {
-										todayTasksCount++;
+									// Если задача имеет временную зону, учитываем ее
+									if (task.timeZone && validateTimeZone(task.timeZone)) {
+										try {
+											// Получаем смещение временной зоны задачи от UTC в минутах
+											const taskDate = new Date(task.dueDate);
+											const formatter = new Intl.DateTimeFormat("en-US", {
+												timeZone: task.timeZone,
+												year: "numeric",
+												month: "numeric",
+												day: "numeric",
+												hour: "numeric",
+												minute: "numeric",
+												second: "numeric",
+												hour12: false,
+											});
+
+											// Форматируем дату в строку и парсим обратно
+											const dateString = formatter.format(taskDate);
+											const localDate = new Date(dateString);
+
+											// Сравниваем с сегодняшней датой
+											if (localDate < today) {
+												overdueTasksCount++;
+											} else if (localDate >= today && localDate < tomorrow) {
+												todayTasksCount++;
+											}
+										} catch (error) {
+											// Если произошла ошибка при работе с временной зоной,
+											// используем обычное сравнение
+											if (dueDate < today) {
+												overdueTasksCount++;
+											} else if (dueDate >= today && dueDate < tomorrow) {
+												todayTasksCount++;
+											}
+										}
+									} else {
+										// Если временная зона не указана, используем обычное сравнение
+										if (dueDate < today) {
+											overdueTasksCount++;
+										} else if (dueDate >= today && dueDate < tomorrow) {
+											todayTasksCount++;
+										}
 									}
 								}
 							}
